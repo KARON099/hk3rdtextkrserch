@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <title>hk3rd story text searcher</title>
   <script>
@@ -101,6 +101,55 @@
     .selected-label { display:block; margin-bottom:6px; color:var(--muted); font-size:12px; font-weight:600; }
     .context-controls { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:10px; padding:14px; border-top:1px solid var(--border); }
     .context-range { width:100%; text-align:center; color:var(--muted); font-size:13px; }
+    html { -webkit-text-size-adjust:100%; }
+    body.context-open { overflow:hidden; }
+    button { touch-action:manipulation; }
+    .context-header,.context-controls { flex-shrink:0; }
+    @media(max-width:680px) {
+      body { padding:12px max(10px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); }
+      .header { padding:20px 16px; }
+      .heading { gap:10px; }
+      h1 { flex-basis:100%; font-size:23px; line-height:1.4; overflow-wrap:anywhere; }
+      .theme-toggle { margin-left:auto; }
+      .description { line-height:1.7; margin:14px 0 18px; }
+      .search-form { flex-direction:column; }
+      .search-input { min-height:50px; }
+      .search-button { min-height:48px; }
+      .status-bar { padding:12px 16px; }
+      .table-wrap { overflow:visible; }
+      table,tbody { display:block; width:100%; }
+      colgroup { display:none; }
+      thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); clip-path:inset(50%); }
+      tbody { padding:12px; background:var(--bg); }
+      tbody tr { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; margin-bottom:12px; padding:16px; background:var(--card); border:1px solid var(--border); border-radius:10px; }
+      tbody tr:last-child { margin-bottom:0; }
+      tbody tr:hover { background:var(--card); }
+      td { display:block; min-width:0; padding:0; border:0; font-size:14px; line-height:1.7; }
+      td::before { display:block; margin-bottom:4px; color:var(--muted); font-size:12px; font-weight:600; }
+      td:nth-child(1)::before { content:'장명'; }
+      td:nth-child(2)::before { content:'화자'; }
+      td:nth-child(3) { grid-column:1 / -1; padding-top:12px; border-top:1px solid var(--border); font-size:16px; line-height:1.85; }
+      td:nth-child(3)::before { content:'대사'; }
+      td.empty { grid-column:1 / -1; padding:30px 0; text-align:center; }
+      td.empty::before { content:none; }
+      .dialogue-link { font-size:16px; line-height:1.85; }
+      .dialogue-link::after { content:'주변 대사 보기 ›'; display:block; margin-top:10px; color:var(--muted); font-size:12px; }
+      .pagination { gap:12px; padding:16px 12px; }
+      .pagination button { min-height:48px; flex:1; max-width:120px; }
+      .context-dialog { width:100%; max-width:100%; height:100%; height:100dvh; max-height:100%; max-height:100dvh; margin:0; border:0; border-radius:0; }
+      .context-layout { height:100%; max-height:100%; }
+      .context-header { padding:max(12px,env(safe-area-inset-top)) 16px 12px; }
+      .context-heading { gap:8px; }
+      .context-heading h2 { font-size:18px; }
+      #closeContext { font-size:13px; padding:8px 12px; }
+      .context-note { font-size:12px; line-height:1.6; }
+      .context-scroll { flex:1; }
+      .context-controls { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:10px max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left)); background:var(--card); }
+      .context-range { grid-column:1 / -1; font-size:12px; }
+      .context-controls button { min-width:0; min-height:48px; padding:8px 4px; font-size:12px; }
+      .context-selected,.context-selected:hover { border-color:#58a6ff; background:var(--soft); box-shadow:inset 3px 0 #58a6ff; }
+      .context-selected td:first-child { box-shadow:none; }
+    }
   </style>
 </head>
 <body>
@@ -396,6 +445,7 @@
       selectedRecordIndex = index;
       contextStart = Math.max(0, index - 20);
       contextDialog.showModal();
+      document.body.classList.add('context-open');
       renderContext(true);
     }
     ui.body.addEventListener('click', event => {
@@ -403,6 +453,7 @@
       if (button && ui.body.contains(button)) openContext(Number(button.dataset.recordIndex));
     });
     $('closeContext').addEventListener('click', () => contextDialog.close());
+    contextDialog.addEventListener('close', () => document.body.classList.remove('context-open'));
     $('contextPrevious').addEventListener('click', () => {
       contextStart = Math.max(0, contextStart - CONTEXT_SIZE);
       renderContext();
@@ -420,10 +471,12 @@
     ui.previous.addEventListener('click', () => {
       if (searching || currentPage <= 1) return;
       currentPage--; renderPage();
+      ui.results.scrollIntoView({block:'start'});
     });
     ui.next.addEventListener('click', () => {
       if (searching || currentPage >= Math.ceil(resultCount() / PAGE_SIZE)) return;
       currentPage++; renderPage();
+      ui.results.scrollIntoView({block:'start'});
     });
     ui.retry.addEventListener('click', () => { void loadData(); });
     void loadData();
