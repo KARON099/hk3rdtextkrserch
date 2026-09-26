@@ -80,7 +80,7 @@
       .theme-toggle { margin-left:0; }
       .chapter-column { width:23%; }
       .speaker-column { width:22%; }
-      th,td { padding:12px 9px; }
+      th,td { padding:12px 9px; }  
       table { font-size:13px; }
       .pagination { gap:12px; padding:16px 10px; }
       .pagination button { padding:8px 13px; }
@@ -90,7 +90,7 @@
 </head>
 <body>
   <main class="container">
-    <header class="header">
+    <header class="h  eader">
       <div class="heading">
         <h1>인게임 텍스트 검색</h1>
         <span id="totalCount" class="badge">데이터 불러오는 중</span>
@@ -111,7 +111,7 @@
       <div id="loading" class="loading" role="status">
         <div class="spinner" aria-hidden="true"></div>
         <p id="loadingText">대사 데이터를 불러오고 있습니다…</p>
-      </div>
+      </div>          
       <div id="errorBox" class="error" role="alert" hidden>
         <strong>데이터를 불러오지 못했습니다.</strong>
         <p id="errorMessage"></p>
@@ -210,6 +210,16 @@
       ui.next.disabled = searching || pages === 0 || currentPage >= pages;
     }
     function renderPage() {
+            // 검색어가 없으면 결과 테이블과 페이지 버튼 숨기기
+      if (!activeQuery) {
+        ui.results.hidden = true;
+        ui.body.innerHTML = "";
+        ui.range.textContent = "";
+        ui.status.textContent = "검색어를 입력해 주세요.";
+        return;
+      }
+
+      ui.results.hidden = false;
       const count = resultCount();
       const pages = Math.ceil(count / PAGE_SIZE);
       currentPage = Math.max(1, Math.min(currentPage, pages || 1));
@@ -305,7 +315,7 @@
         ui.status.textContent = '데이터를 불러오지 못했습니다.';
         ui.errorMessage.textContent = error instanceof SyntaxError
           ? 'dialogue.json의 JSON 형식이 올바른지 확인해 주세요.'
-          : (error.message || '파일 경로와 네트워크 연결을 확인해 주세요.');
+          
         ui.error.hidden = false;
       } finally {
         ui.loading.hidden = true;
