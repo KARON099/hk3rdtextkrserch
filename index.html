@@ -210,19 +210,7 @@
       ui.next.disabled = searching || pages === 0 || currentPage >= pages;
     }
     function renderPage() {
-            // 검색어가 없으면 결과 테이블과 페이지 버튼 숨기기
-      if (!activeQuery) {
-        ui.results.hidden = true;
-        ui.body.innerHTML = "";
-        ui.range.textContent = "";
-        ui.status.textContent = "검색어를 입력해 주세요.";
-        return;
-      }
-
-      ui.results.hidden = false;
-      const count = resultCount();
-      const pages = Math.ceil(count / PAGE_SIZE);
-      currentPage = Math.max(1, Math.min(currentPage, pages || 1));
+      
       const start = (currentPage - 1) * PAGE_SIZE;
       const end = Math.min(start + PAGE_SIZE, count);
       if (!count) {
