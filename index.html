@@ -150,6 +150,16 @@
       .context-selected,.context-selected:hover { border-color:#58a6ff; background:var(--soft); box-shadow:inset 3px 0 #58a6ff; }
       .context-selected td:first-child { box-shadow:none; }
     }
+    @media(max-width:680px) {
+      #contextBody { padding:8px 10px; }
+      #contextBody tr { display:block; margin-bottom:6px; padding:10px 12px; border-radius:7px; font-size:15px; line-height:1.7; overflow-wrap:anywhere; }
+      #contextBody td:first-child { display:none; }
+      #contextBody td:nth-child(2),
+      #contextBody td:nth-child(3) { display:inline; padding:0; border:0; font-size:inherit; line-height:inherit; }
+      #contextBody td:nth-child(2) { font-weight:600; }
+      #contextBody td::before { content:none; }
+      #contextBody td:nth-child(2)::after { content:' : '; white-space:pre; font-weight:400; }
+    }
   </style>
 </head>
 <body>
