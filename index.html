@@ -90,7 +90,7 @@
 </head>
 <body>
   <main class="container">
-    <header class="h  eader">
+    <header class="header">
       <div class="heading">
         <h1>인게임 텍스트 검색</h1>
         <span id="totalCount" class="badge">데이터 불러오는 중</span>
@@ -210,6 +210,17 @@
       ui.next.disabled = searching || pages === 0 || currentPage >= pages;
     }
     function renderPage() {
+      if (!activeQuery) {
+        ui.results.hidden = true;
+        ui.body.innerHTML = '';
+        ui.range.textContent = '';
+        ui.status.textContent = '검색어를 입력해 주세요.';
+        return;
+      }
+      ui.results.hidden = false;
+      const count = resultCount();
+      const pages = Math.ceil(count / PAGE_SIZE);
+      currentPage = Math.max(1, Math.min(currentPage, pages || 1));
       
       const start = (currentPage - 1) * PAGE_SIZE;
       const end = Math.min(start + PAGE_SIZE, count);
@@ -303,6 +314,7 @@
         ui.status.textContent = '데이터를 불러오지 못했습니다.';
         ui.errorMessage.textContent = error instanceof SyntaxError
           ? 'dialogue.json의 JSON 형식이 올바른지 확인해 주세요.'
+          : (error.message || '파일 경로와 네트워크 연결을 확인해 주세요.');
           
         ui.error.hidden = false;
       } finally {
