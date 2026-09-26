@@ -86,6 +86,21 @@
       .pagination button { padding:8px 13px; }
     }
     @media(prefers-reduced-motion:reduce) { .spinner { animation:none; } }
+    .dialogue-link { display:block; width:100%; min-height:44px; padding:0; border:0; background:transparent; color:var(--text); text-align:left; white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; cursor:pointer; }
+    .dialogue-link:hover:not(:disabled) { background:transparent; text-decoration:underline; text-decoration-color:var(--accent); text-underline-offset:4px; }
+    .context-dialog { width:min(1100px,calc(100% - 24px)); max-height:90dvh; padding:0; border:1px solid var(--border); border-radius:12px; background:var(--card); color:var(--text); }
+    .context-dialog::backdrop { background:rgb(0 0 0 / 65%); }
+    .context-layout { display:flex; flex-direction:column; max-height:85dvh; }
+    .context-header { padding:18px 20px; border-bottom:1px solid var(--border); }
+    .context-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
+    .context-heading h2 { margin:0; font-size:20px; }
+    .context-note { margin:8px 0 0; color:var(--muted); font-size:13px; }
+    .context-scroll { overflow:auto; min-height:0; overscroll-behavior:contain; }
+    .context-selected,.context-selected:hover { background:var(--soft); }
+    .context-selected td:first-child { box-shadow:inset 4px 0 #58a6ff; }
+    .selected-label { display:block; margin-bottom:6px; color:var(--muted); font-size:12px; font-weight:600; }
+    .context-controls { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:10px; padding:14px; border-top:1px solid var(--border); }
+    .context-range { width:100%; text-align:center; color:var(--muted); font-size:13px; }
   </style>
 </head>
 <body>
@@ -96,7 +111,7 @@
         <span id="totalCount" class="badge">데이터 불러오는 중</span>
         <button id="themeToggle" class="theme-toggle" type="button" aria-label="다크 모드" aria-pressed="false"><span id="themeIcon" aria-hidden="true">☾</span> 다크 모드</button>
       </div>
-      <p class="description">장명, 화자, 대사에서 검색합니다.  </p>
+      <p class="description">장명, 화자, 대사에서 검색합니다. 검색된 대사를 누르면 앞뒤 대사를 볼 수 있습니다.</p>
       <form id="searchForm" class="search-form" role="search">
         <label for="searchInput" class="sr-only">대사 검색</label>
         <input id="searchInput" class="search-input" type="search" placeholder="장명, 등장인물 또는 대사를 입력하세요 (예: 31장, 라이덴 메이)" autocomplete="off" disabled>
@@ -135,6 +150,31 @@
     </section>
     <noscript><p class="error">검색기를 사용하려면 JavaScript를 활성화해 주세요.</p></noscript>
   </main>
+  <dialog id="contextDialog" class="context-dialog" aria-labelledby="contextTitle" aria-describedby="contextNote">
+    <div class="context-layout">
+      <header class="context-header">
+        <div class="context-heading">
+          <h2 id="contextTitle">주변 대사</h2>
+          <button id="closeContext" type="button" autofocus>검색 결과로 돌아가기</button>
+        </div>
+        <p id="contextNote" class="context-note">선택한 대사의 앞뒤 20줄을 표시합니다. 대사는 데이터 파일에 저장된 순서이며, 다른 장이 포함될 수 있습니다.</p>
+      </header>
+      <div id="contextScroll" class="context-scroll" tabindex="0" aria-label="주변 대사 목록">
+        <table>
+          <caption class="sr-only">선택한 대사 주변의 원문</caption>
+          <colgroup><col class="chapter-column"><col class="speaker-column"><col></colgroup>
+          <thead><tr><th scope="col">장명</th><th scope="col">화자</th><th scope="col">대사</th></tr></thead>
+          <tbody id="contextBody"></tbody>
+        </table>
+      </div>
+      <nav class="context-controls" aria-label="주변 대사 이동">
+        <span id="contextRange" class="context-range" role="status"></span>
+        <button id="contextPrevious" type="button">이전 41줄</button>
+        <button id="contextOriginal" type="button">선택한 대사로</button>
+        <button id="contextNext" type="button">다음 41줄</button>
+      </nav>
+    </div>
+  </dialog>
   <script>
     'use strict';
     (() => {
@@ -230,9 +270,10 @@
       } else {
         const rows = [];
         for (let index = start; index < end; index++) {
-          const record = records[matches === null ? index : matches[index]];
+          const recordIndex = matches === null ? index : matches[index];
+          const record = records[recordIndex];
           rows.push('<tr><td>' + highlight(record.chapter) + '</td><td>' +
-            highlight(record.speaker) + '</td><td>' + highlight(record.text) + '</td></tr>');
+            highlight(record.speaker) + '</td><td><button type="button" class="dialogue-link" data-record-index="' + recordIndex + '" aria-haspopup="dialog" title="앞뒤 대사 보기">' + highlight(record.text) + '</button></td></tr>');
         }
         ui.body.innerHTML = rows.join('');
         ui.range.textContent = `${formatNumber(start + 1)}–${formatNumber(end)} / ${formatNumber(count)}건`;
@@ -322,6 +363,59 @@
         ui.results.setAttribute('aria-busy', 'false');
       }
     }
+    const contextDialog = $('contextDialog');
+    const CONTEXT_SIZE = 41;
+    let selectedRecordIndex = -1, contextStart = 0;
+    function renderContext(centerSelected = false) {
+      const end = Math.min(contextStart + CONTEXT_SIZE, records.length);
+      const rows = [];
+      for (let index = contextStart; index < end; index++) {
+        const record = records[index];
+        const selected = index === selectedRecordIndex;
+        rows.push('<tr' + (selected ? ' id="selectedContextRow" class="context-selected"' : '') + '><td>' +
+          (selected ? '<span class="selected-label">선택한 대사</span>' : '') +
+          highlight(record.chapter) + '</td><td>' + highlight(record.speaker) + '</td><td>' + highlight(record.text) + '</td></tr>');
+      }
+      $('contextBody').innerHTML = rows.join('');
+      $('contextRange').textContent = `${formatNumber(contextStart + 1)}–${formatNumber(end)} / 전체 ${formatNumber(records.length)}줄`;
+      $('contextPrevious').disabled = contextStart === 0;
+      $('contextNext').disabled = end >= records.length;
+      const scroller = $('contextScroll');
+      scroller.scrollTop = 0;
+      if (centerSelected) {
+        const row = $('selectedContextRow');
+        if (row) {
+          const rowRect = row.getBoundingClientRect();
+          const scrollRect = scroller.getBoundingClientRect();
+          scroller.scrollTop = rowRect.top - scrollRect.top - Math.max(0, (scroller.clientHeight - rowRect.height) / 2);
+        }
+      }
+    }
+    function openContext(index) {
+      if (searching || !Number.isInteger(index) || index < 0 || index >= records.length) return;
+      selectedRecordIndex = index;
+      contextStart = Math.max(0, index - 20);
+      contextDialog.showModal();
+      renderContext(true);
+    }
+    ui.body.addEventListener('click', event => {
+      const button = event.target.closest('button[data-record-index]');
+      if (button && ui.body.contains(button)) openContext(Number(button.dataset.recordIndex));
+    });
+    $('closeContext').addEventListener('click', () => contextDialog.close());
+    $('contextPrevious').addEventListener('click', () => {
+      contextStart = Math.max(0, contextStart - CONTEXT_SIZE);
+      renderContext();
+    });
+    $('contextNext').addEventListener('click', () => {
+      if (contextStart + CONTEXT_SIZE >= records.length) return;
+      contextStart += CONTEXT_SIZE;
+      renderContext();
+    });
+    $('contextOriginal').addEventListener('click', () => {
+      contextStart = Math.max(0, selectedRecordIndex - 20);
+      renderContext(true);
+    });
     ui.form.addEventListener('submit', event => { event.preventDefault(); void search(); });
     ui.previous.addEventListener('click', () => {
       if (searching || currentPage <= 1) return;
